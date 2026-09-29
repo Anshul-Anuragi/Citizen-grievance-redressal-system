@@ -469,6 +469,33 @@ async def test_health_endpoint_checks_database(client: AsyncClient, db_session):
     assert data["db_status"] == "ok"
 
 
+@pytest.mark.asyncio
+async def test_health_endpoint_reports_503_on_database_error(client: AsyncClient):
+    from unittest.mock import patch
+    from app.main import app
+    from app.core.database import get_db
+
+    async def broken_get_db():
+        raise RuntimeError("Database connection refused")
+        yield None
+
+    prev_override = app.dependency_overrides.get(get_db)
+    app.dependency_overrides[get_db] = broken_get_db
+    try:
+        with patch("app.main.get_db", broken_get_db):
+            resp = await client.get("/health")
+            assert resp.status_code == 503
+            data = resp.json()
+            assert data["status"] == "unhealthy"
+            assert data["db_status"] == "error"
+            assert "Database connection refused" in data.get("db_detail", "")
+    finally:
+        if prev_override is not None:
+            app.dependency_overrides[get_db] = prev_override
+        else:
+            app.dependency_overrides.pop(get_db, None)
+
+
 # ---------------------------------------------------------------------------
 # Section E: Transaction Atomicity
 # ---------------------------------------------------------------------------
