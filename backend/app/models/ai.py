@@ -47,7 +47,7 @@ class AIAuditFinding(Base):
     __tablename__ = "ai_audit_findings"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    complaint_id = Column(String(36), ForeignKey("complaints.id", ondelete="CASCADE"), nullable=False, index=True)
+    complaint_id = Column(String(36), ForeignKey("complaints.id", ondelete="RESTRICT"), nullable=False, index=True)
     finding_type = Column(String(50), nullable=False, index=True)
     severity = Column(String(20), nullable=False, index=True)  # INFO, LOW, MEDIUM, HIGH, CRITICAL
     facts = Column(Text, nullable=False, default="[]")  # JSON list of observed empirical facts
@@ -67,7 +67,8 @@ class AIAuditFinding(Base):
     reviews = relationship(
         "AIAuditFindingReview",
         back_populates="finding",
-        cascade="all, delete-orphan",
+        cascade="save-update, merge",
+        passive_deletes="all",
         order_by="desc(AIAuditFindingReview.created_at), desc(AIAuditFindingReview.id)",
         lazy="selectin"
     )
@@ -120,7 +121,7 @@ class AIAuditFindingReview(Base):
     __tablename__ = "ai_audit_finding_reviews"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    finding_id = Column(String(36), ForeignKey("ai_audit_findings.id", ondelete="CASCADE"), nullable=False, index=True)
+    finding_id = Column(String(36), ForeignKey("ai_audit_findings.id", ondelete="RESTRICT"), nullable=False, index=True)
     reviewer_user_id = Column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     action = Column(String(20), nullable=False, index=True)  # ACCEPTED, REJECTED, AMENDED
     reviewer_notes = Column(Text, nullable=False)

@@ -79,7 +79,7 @@ class Complaint(Base):
     feedback = relationship("Feedback", back_populates="complaint", uselist=False, cascade="all, delete-orphan")
     escalations = relationship("Escalation", back_populates="complaint", cascade="all, delete-orphan")
     reopen_requests = relationship("ReopenRequest", back_populates="complaint", cascade="all, delete-orphan")
-    audit_findings = relationship("AIAuditFinding", back_populates="complaint", cascade="all, delete-orphan", lazy="selectin")
+    audit_findings = relationship("AIAuditFinding", back_populates="complaint", cascade="save-update, merge", passive_deletes="all", lazy="selectin")
 
 
 class AnonymousAccessSession(Base):
