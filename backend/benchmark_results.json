@@ -1,0 +1,335 @@
+{
+  "benchmark_metadata": {
+    "version": "janseva-ai-benchmark-v1.0",
+    "rules_version": "deterministic-rules-v1.0",
+    "timestamp": "2026-09-29T04:28:57.674283+00:00",
+    "execution_mode": "pure_deterministic_rules",
+    "workload_threshold": 15,
+    "total_scenarios_evaluated": 22
+  },
+  "aggregate_metrics": {
+    "total_scenarios": 22,
+    "exact_match_scenarios": 22,
+    "exact_match_accuracy": 1.0,
+    "cumulative_counts": {
+      "TP": 17,
+      "FP": 0,
+      "FN": 0,
+      "TN": 93
+    },
+    "micro_precision": 1.0,
+    "micro_recall": 1.0,
+    "micro_false_positive_rate": 0.0,
+    "micro_false_negative_rate": 0.0
+  },
+  "per_finding_type_metrics": {
+    "MISSING_RESOLUTION_EVIDENCE": {
+      "TP": 4,
+      "FP": 0,
+      "FN": 0,
+      "TN": 18,
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "OVERDUE_INACTIVITY": {
+      "TP": 2,
+      "FP": 0,
+      "FN": 0,
+      "TN": 20,
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "CITIZEN_DISSATISFACTION": {
+      "TP": 3,
+      "FP": 0,
+      "FN": 0,
+      "TN": 19,
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "OFFICER_CAPACITY_SIGNAL": {
+      "TP": 3,
+      "FP": 0,
+      "FN": 0,
+      "TN": 19,
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    },
+    "EVIDENCE_LIMITATION": {
+      "TP": 5,
+      "FP": 0,
+      "FN": 0,
+      "TN": 17,
+      "precision": 1.0,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "false_negative_rate": 0.0
+    }
+  },
+  "scenario_results": [
+    {
+      "scenario_id": "SCEN-01",
+      "description": "Resolved complaint without resolution evidence reference",
+      "category": "resolution_evidence",
+      "expected": [
+        "MISSING_RESOLUTION_EVIDENCE"
+      ],
+      "predicted": [
+        "MISSING_RESOLUTION_EVIDENCE"
+      ],
+      "exact_match": true,
+      "notes": "Empirical missing evidence check on RESOLVED complaint."
+    },
+    {
+      "scenario_id": "SCEN-02",
+      "description": "Resolved complaint with uninspected evidence attachment",
+      "category": "evidence_limitation",
+      "expected": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "predicted": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "exact_match": true,
+      "notes": "Evidence exists but uninspected by vision/OCR -> flags limitation, not proof."
+    },
+    {
+      "scenario_id": "SCEN-03",
+      "description": "Overdue complaint with recent activity within 48 hours",
+      "category": "overdue_activity",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Recent activity (< 48h) correctly suppresses OVERDUE_INACTIVITY finding."
+    },
+    {
+      "scenario_id": "SCEN-04",
+      "description": "Overdue complaint with zero recent activity (> 48 hours)",
+      "category": "overdue_activity",
+      "expected": [
+        "OVERDUE_INACTIVITY"
+      ],
+      "predicted": [
+        "OVERDUE_INACTIVITY"
+      ],
+      "exact_match": true,
+      "notes": "Overdue with zero recorded progress in 72h triggers inactivity finding."
+    },
+    {
+      "scenario_id": "SCEN-05",
+      "description": "Citizen dissatisfaction reported after marked resolution (missing evidence)",
+      "category": "citizen_feedback",
+      "expected": [
+        "CITIZEN_DISSATISFACTION",
+        "MISSING_RESOLUTION_EVIDENCE"
+      ],
+      "predicted": [
+        "CITIZEN_DISSATISFACTION",
+        "MISSING_RESOLUTION_EVIDENCE"
+      ],
+      "exact_match": true,
+      "notes": "Citizen reports grievance unresolved; also lacks resolution evidence."
+    },
+    {
+      "scenario_id": "SCEN-06",
+      "description": "Satisfactory outcome verified by citizen with evidence present",
+      "category": "citizen_feedback",
+      "expected": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "predicted": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "exact_match": true,
+      "notes": "Evidence limitation noted, but no dissatisfaction or missing evidence finding."
+    },
+    {
+      "scenario_id": "SCEN-07",
+      "description": "Assigned officer workload exceeds operational capacity guideline (18 > 15)",
+      "category": "officer_capacity",
+      "expected": [
+        "OFFICER_CAPACITY_SIGNAL"
+      ],
+      "predicted": [
+        "OFFICER_CAPACITY_SIGNAL"
+      ],
+      "exact_match": true,
+      "notes": "Workload > 15 triggers supervisory rebalancing capacity signal."
+    },
+    {
+      "scenario_id": "SCEN-08",
+      "description": "Assigned officer workload within capacity guideline (8 <= 15)",
+      "category": "officer_capacity",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Workload below threshold generates no capacity signal."
+    },
+    {
+      "scenario_id": "SCEN-09",
+      "description": "Missing optional metadata fields (empty remarks, unassigned officer)",
+      "category": "robustness",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Robustness check: service handles None/empty fields gracefully."
+    },
+    {
+      "scenario_id": "SCEN-10",
+      "description": "Conflicting signals: citizen feedback claims satisfied but admin marked VERIFIED_UNSATISFACTORY",
+      "category": "conflict_resolution",
+      "expected": [
+        "CITIZEN_DISSATISFACTION",
+        "EVIDENCE_LIMITATION"
+      ],
+      "predicted": [
+        "CITIZEN_DISSATISFACTION",
+        "EVIDENCE_LIMITATION"
+      ],
+      "exact_match": true,
+      "notes": "VERIFIED_UNSATISFACTORY overrides to flag dissatisfaction/quality gap."
+    },
+    {
+      "scenario_id": "SCEN-11",
+      "description": "Benign text resembling command instructions in complaint body",
+      "category": "security_safety",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Benign natural language instructions must not be falsely flagged."
+    },
+    {
+      "scenario_id": "SCEN-12",
+      "description": "Prompt-injection attempt inside grievance description",
+      "category": "security_safety",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Boundary tag neutralization ensures prompt injection is inert."
+    },
+    {
+      "scenario_id": "SCEN-13",
+      "description": "In-progress grievance on track (within SLA, recent officer update)",
+      "category": "baseline_normal",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Standard healthy grievance produces clean audit (zero findings)."
+    },
+    {
+      "scenario_id": "SCEN-14",
+      "description": "New unassigned complaint submitted within SLA window",
+      "category": "baseline_normal",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Newly submitted complaint awaiting assignment is clean."
+    },
+    {
+      "scenario_id": "SCEN-15",
+      "description": "Closed complaint with resolution evidence provided",
+      "category": "resolution_evidence",
+      "expected": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "predicted": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "exact_match": true,
+      "notes": "CLOSED complaint with evidence does NOT trigger MISSING_RESOLUTION_EVIDENCE."
+    },
+    {
+      "scenario_id": "SCEN-16",
+      "description": "Closed complaint without resolution evidence provided",
+      "category": "resolution_evidence",
+      "expected": [
+        "MISSING_RESOLUTION_EVIDENCE"
+      ],
+      "predicted": [
+        "MISSING_RESOLUTION_EVIDENCE"
+      ],
+      "exact_match": true,
+      "notes": "CLOSED complaint without evidence triggers MISSING_RESOLUTION_EVIDENCE."
+    },
+    {
+      "scenario_id": "SCEN-17",
+      "description": "Multi-label: Missing evidence + Citizen dissatisfaction + Officer capacity overload",
+      "category": "multi_label",
+      "expected": [
+        "CITIZEN_DISSATISFACTION",
+        "MISSING_RESOLUTION_EVIDENCE",
+        "OFFICER_CAPACITY_SIGNAL"
+      ],
+      "predicted": [
+        "CITIZEN_DISSATISFACTION",
+        "MISSING_RESOLUTION_EVIDENCE",
+        "OFFICER_CAPACITY_SIGNAL"
+      ],
+      "exact_match": true,
+      "notes": "Multiple independent issues on resolved complaint: missing evidence, dissatisfied citizen, overloaded officer."
+    },
+    {
+      "scenario_id": "SCEN-18",
+      "description": "Multi-label: Overdue inactivity + Officer capacity overload",
+      "category": "multi_label",
+      "expected": [
+        "OFFICER_CAPACITY_SIGNAL",
+        "OVERDUE_INACTIVITY"
+      ],
+      "predicted": [
+        "OFFICER_CAPACITY_SIGNAL",
+        "OVERDUE_INACTIVITY"
+      ],
+      "exact_match": true,
+      "notes": "Overdue with no progress notes on an overloaded officer (22 active tickets)."
+    },
+    {
+      "scenario_id": "SCEN-19",
+      "description": "Resolution evidence attached as document/PDF requiring manual human check",
+      "category": "evidence_limitation",
+      "expected": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "predicted": [
+        "EVIDENCE_LIMITATION"
+      ],
+      "exact_match": true,
+      "notes": "Evidence awareness recognizes PDF document metadata but limitations remain unassessed."
+    },
+    {
+      "scenario_id": "SCEN-20",
+      "description": "Boundary condition: Officer active workload exactly equal to threshold (15)",
+      "category": "boundary_condition",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Capacity threshold is strictly > 15; exactly 15 active tickets produces no signal."
+    },
+    {
+      "scenario_id": "SCEN-21",
+      "description": "Boundary condition: Recent status change logged exactly 47 hours ago (< 48h)",
+      "category": "boundary_condition",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Activity logged at 47 hours is inside the 48h window; suppresses finding."
+    },
+    {
+      "scenario_id": "SCEN-22",
+      "description": "Reopened complaint currently back in IN_PROGRESS status",
+      "category": "lifecycle_reopened",
+      "expected": [],
+      "predicted": [],
+      "exact_match": true,
+      "notes": "Citizen dissatisfaction rule applies only to RESOLVED/CLOSED; not active re-opened tickets."
+    }
+  ]
+}

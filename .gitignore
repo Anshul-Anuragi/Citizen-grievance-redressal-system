@@ -1,0 +1,31 @@
+# Environment & Secrets
+.env
+.env.local
+*.env
+.local/
+docs/LOCAL_CREDENTIALS.md
+docs/ALL_CREDENTIALS_EXTRACT.md
+
+# Python
+backend/.venv/
+**/__pycache__/
+*.py[cod]
+*.db
+backend/uploads/
+.pytest_cache/
+**/.pytest_cache/
+*.db-shm
+*.db-wal
+
+# Node / Vite / Next.js
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.next/
+*.local
+
+# System & IDE
+.DS_Store
+.vscode/
+.idea/
+
