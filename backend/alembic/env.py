@@ -24,7 +24,12 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
-    url = os.environ.get("DATABASE_URL") or settings.DATABASE_URL
+    url = (
+        os.environ.get("MIGRATION_DATABASE_URL")
+        or settings.MIGRATION_DATABASE_URL
+        or os.environ.get("DATABASE_URL")
+        or settings.DATABASE_URL
+    )
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql+asyncpg://", 1)
     elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):

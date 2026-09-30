@@ -166,12 +166,12 @@ async def submit_registered_complaint(
     except Exception:
         pass
 
-    # Notify District Admin
-    admin_profile_res = await db.execute(
+    # Notify District Admins
+    admin_profiles_res = await db.execute(
         select(DistrictAdminProfile).where(DistrictAdminProfile.district_code == complaint.district_code)
     )
-    admin_profile = admin_profile_res.scalar_one_or_none()
-    if admin_profile:
+    admin_profiles = admin_profiles_res.scalars().all()
+    for admin_profile in admin_profiles:
         await NotificationService.create_notification(
             db, recipient_user_id=admin_profile.user_id,
             type="NEW_COMPLAINT",
@@ -461,11 +461,11 @@ async def request_reopen_complaint(
     )
     await db.commit()
 
-    admin_profile_res = await db.execute(
+    admin_profiles_res = await db.execute(
         select(DistrictAdminProfile).where(DistrictAdminProfile.district_code == complaint.district_code)
     )
-    admin_profile = admin_profile_res.scalar_one_or_none()
-    if admin_profile:
+    admin_profiles = admin_profiles_res.scalars().all()
+    for admin_profile in admin_profiles:
         await NotificationService.create_notification(
             db, recipient_user_id=admin_profile.user_id,
             type="REOPEN_REQUEST",

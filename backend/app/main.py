@@ -1,4 +1,5 @@
 import os
+import time
 import uuid
 import asyncio
 import logging
@@ -51,8 +52,9 @@ async def _periodic_sla_overdue_scanner(interval_seconds: int = 60):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _check_production_security()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    if "sqlite" in str(engine.url):
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
     # Start decoupled SLA scanner background task
     scanner_task = asyncio.create_task(_periodic_sla_overdue_scanner())
@@ -75,11 +77,26 @@ app = FastAPI(
 
 
 @app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
+async def request_logging_middleware(request: Request, call_next):
+    start_time = time.time()
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
     request.state.request_id = request_id
+
     response = await call_next(request)
+    elapsed_ms = round((time.time() - start_time) * 1000, 2)
     response.headers["X-Request-ID"] = request_id
+
+    # Structured access log without passwords, tokens, or sensitive headers
+    logger.info(
+        "HTTP Request completed",
+        extra={
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": elapsed_ms,
+        }
+    )
     return response
 
 
@@ -103,14 +120,23 @@ app.include_router(attachments.router, prefix=api_v1_prefix)
 
 
 @app.get("/health", tags=["Health"])
-async def health_check():
+async def health_check(request: Request):
     db_status = "error"
     db_detail = None
+    override = request.app.dependency_overrides.get(get_db)
+    target_get_db = override if override is not None else get_db
     try:
-        async for session in get_db():
-            await session.execute(text("SELECT 1"))
+        gen = target_get_db()
+        session = await anext(gen)
+        try:
+            if session:
+                await session.execute(text("SELECT 1"))
             db_status = "ok"
-            break
+        finally:
+            try:
+                await gen.aclose()
+            except Exception:
+                pass
     except Exception as exc:
         db_detail = str(exc)
         logger.error("Health check database error: %s", exc)

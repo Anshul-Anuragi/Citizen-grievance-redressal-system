@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
@@ -43,12 +43,14 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 100, background: '#ffffff' }}>
-      {/* 1. Indian Tricolor Top Accent Strip */}
-      <div className="gov-tricolor-strip" />
+    <>
+      {/* Top Branding Header: Scrolls smoothly out of view in normal document flow */}
+      <header className="gov-site-header">
+        {/* 1. Indian Tricolor Top Accent Strip */}
+        <div className="gov-tricolor-strip" />
 
-      {/* 2. Official Top Utility / Accessibility Bar */}
-      <div className="gov-top-bar">
+        {/* 2. Official Top Utility / Accessibility Bar */}
+        <div className="gov-top-bar">
         <div className="container">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <span style={{ fontWeight: '600', color: '#f3f4f6' }}>
@@ -142,6 +144,7 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+      </header>
 
       {/* 4. Primary Government Navigation Bar (Deep Navy) */}
       <nav className="gov-nav-bar">
@@ -183,8 +186,25 @@ export const Navbar: React.FC = () => {
             </ul>
           </div>
 
-          {/* User Auth Buttons in Nav */}
+          {/* User Auth & Language Buttons in Nav */}
           <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* Bilingual Language Switcher in Nav Bar */}
+            <button
+              onClick={toggleLanguage}
+              className="gov-top-btn"
+              title="Change Language"
+              style={{
+                padding: '0.35rem 0.65rem',
+                fontSize: '0.78rem',
+                borderColor: 'rgba(255,255,255,0.25)',
+                background: 'rgba(255,255,255,0.08)',
+                color: '#f8fafc',
+                marginRight: '0.25rem',
+              }}
+            >
+              <Globe size={13} />
+              <strong>{lang === 'en' ? 'हिन्दी' : 'English'}</strong>
+            </button>
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Link
@@ -362,6 +382,6 @@ export const Navbar: React.FC = () => {
           .gov-brand-text h1 { font-size: 1.15rem !important; }
         }
       `}</style>
-    </header>
+    </>
   );
 };

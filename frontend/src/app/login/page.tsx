@@ -70,9 +70,9 @@ export default function LoginPage() {
     setRoleTab(role);
     setErrorMsg(null);
     const demos = {
-      CITIZEN: { e: 'citizen.demo@mp.gov.in', p: 'CitizenPass123!' },
-      OFFICER: { e: 'officer.bhopal.revenue@mp.gov.in', p: 'OfficerPass123!' },
-      ADMIN: { e: 'admin.bhopal@mp.gov.in', p: 'AdminPass123!' },
+      CITIZEN: { e: 'citizen.demo@example.com', p: 'CitizenPass123!' },
+      OFFICER: { e: 'officer.bhopal.revenue@example.com', p: 'OfficerPass123!' },
+      ADMIN: { e: 'admin.bhopal@example.com', p: 'AdminPass123!' },
     };
     setEmail(demos[role].e);
     setPassword(demos[role].p);

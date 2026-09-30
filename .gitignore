@@ -13,15 +13,16 @@ backend/.venv/
 *.db
 backend/uploads/
 .pytest_cache/
-**/.pytest_cache/
-*.db-shm
-*.db-wal
 
-# Node / Vite / Next.js
+# Node / Next.js
 frontend/node_modules/
+node_modules/
 frontend/dist/
 frontend/dist-ssr/
 frontend/.next/
+.next/
+out/
+build/
 *.local
 
 # System & IDE
@@ -29,3 +30,6 @@ frontend/.next/
 .vscode/
 .idea/
 
+.neon
+.agents/
+skills-lock.json

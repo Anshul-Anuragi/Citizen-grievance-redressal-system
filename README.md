@@ -2,9 +2,9 @@
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/Frontend-React%2018-61DAFB.svg)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Build-Vite-646CFF.svg)](https://vitejs.dev/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2FSupabase-4169E1.svg)](https://supabase.com/)
+[![Next.js](https://img.shields.io/badge/Frontend-Next.js%2016-000000.svg)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-3178C6.svg)](https://www.typescriptlang.org/)
+[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL%2FNeon-4169E1.svg)](https://neon.tech/)
 
 A complete, production-grade civic grievance redressal portal built for the **Government of Madhya Pradesh** and integrated with **MPOnline** governance workflows.
 
@@ -27,89 +27,38 @@ The application provides transparent, time-bound, SLA-monitored grievance redres
 - **Strict Reopen Workflow**: Reopening a `RESOLVED` or `CLOSED` complaint requires a citizen to submit a `ReopenRequest`. Only District Admin approval transitions the complaint to `REOPENED` and restores officer workload.
 - **Attachment Workflow**: Multi-format supporting document uploads (Images, PDF, MP4, MP3/WAV) with file size validation (max 10MB) and secure access controls.
 - **Optional Gemini AI Layer**: Uses Gemini API for smart category/priority recommendations and executive district insights. IF GEMINI IS UNAVAILABLE OR UNCONFIGURED, THE SYSTEM AUTOMATICALLY FALLS BACK TO A KEYWORD RULE ENGINE WITHOUT BREAKING CORE FUNCTIONALITY.
-- **Secure Credential Management**: No hardcoded passwords in version control. Running `python seed.py` generates individual cryptographically secure passwords for all 496 accounts and exports them strictly to `.local/LOCAL_CREDENTIALS.md` (gitignored).
+- **Secure Credential Management**: No hardcoded passwords in version control. Safe seeding with environment variables.
 - **Bilingual Interface (i18n)**: Instant English and Hindi UI toggle across public landing page, forms, dashboards, and error messages.
-
----
-
-## 🔑 Credential Provisioning & Demo Access
-
-For security, plaintext demo credentials are **never hardcoded in source files or public README**.
-
-To generate and retrieve demo credentials locally:
-```bash
-cd backend
-python seed.py
-```
-This script provisions:
-1. **1 Registered Citizen Demo Account** (`citizen@example.com`)
-2. **55 District Admin Accounts** (`admin.<district_code_lower>@mp.gov.in`, e.g., `admin.ind@mp.gov.in`, `admin.bho@mp.gov.in`)
-3. **440 Department Officer Accounts** (`officer.<district_code_lower>.<dept_code_lower>@mp.gov.in`, e.g., `officer.ind.pwd@mp.gov.in`)
-
-Plaintext generated passwords are saved strictly to your local gitignored file:
-`digital-grievance-system/.local/LOCAL_CREDENTIALS.md`
 
 ---
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React 18, Vite, React Router v6, Recharts, Lucide Icons, Custom Responsive Civic CSS System, i18n English/Hindi Localization.
-- **Backend**: Python 3.10+, FastAPI, Pydantic v2, SQLAlchemy 2.0 (Async), PyJWT, Bcrypt hashing.
-- **Database**: PostgreSQL / Supabase (Production) / SQLite (Local Dev & Pytest).
-- **Storage**: Private Storage Service with access-controlled file view proxy.
-- **AI**: Gemini API with Keyword Rule Engine Fallback.
-- **Email**: Configurable Email Provider Abstraction (Mock / SMTP / Resend).
-
----
-
-## 📂 Project Structure
-
-```
-digital-grievance-system/
-├── backend/
-│   ├── app/
-│   │   ├── api/            # REST API Routes (auth, complaints, district_admin, officers, attachments, ai, analytics, notifications)
-│   │   ├── core/           # Security, Permissions, Database Config, Settings
-│   │   ├── models/         # SQLAlchemy Models (User, Grievance, Complaint, Notification, AI)
-│   │   ├── schemas/        # Pydantic Schemas
-│   │   ├── services/       # Business Logic (SLA, Assignment, AI, Email, Storage)
-│   │   └── main.py         # FastAPI App Entrypoint & CORS setup
-│   ├── scripts/            # Credential Provisioning & Demo Seed Generator
-│   ├── tests/              # Pytest Async Test Suite
-│   ├── seed.py             # Database Seed Entrypoint
-│   └── requirements.txt
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # Navbar, Footer, Badges, Modals, AI Recommendation Card, Charts
-│   │   ├── contexts/       # AuthContext, LanguageContext
-│   │   ├── i18n/           # English (en.json) & Hindi (hi.json) Translations
-│   │   ├── pages/          # LandingPage, Login, Register, Dashboards, ComplaintDetail
-│   │   ├── services/       # Axios API Client
-│   │   └── styles/         # Global Civic Styling & Responsive Tokens
-│   └── package.json
-├── docs/                   # Architecture, DB Schema, API Specs, Deployment & Testing Reports
-├── .env.example
-└── README.md
-```
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Lucide Icons, Custom Responsive Civic CSS System, Zero-Flicker Sticky Header, Bilingual English/Hindi Localization.
+- **Backend**: Python 3.10+, FastAPI, Pydantic v2, SQLAlchemy 2.0 (Async), PyJWT, Bcrypt hashing, SlowAPI Rate Limiting.
+- **Database**: PostgreSQL / Neon Serverless (Production) / SQLite (Local Dev & Pytest) with least-privilege role separation (`janseva_app` vs `janseva_migrator`) and immutable audit log triggers.
+- **Storage**: Pluggable Attachment Storage (Local filesystem or Supabase Storage).
+- **Messaging**: Pluggable Notification Service (Mock, SMTP, Resend).
+- **AI**: Gemini API with keyword-based rule engine fallback.
 
 ---
 
 ## 🚀 Quick Local Run Instructions
 
-### 1. Backend Setup & Seed
+### 1. Backend Setup
 ```bash
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Seed all 55 MP Districts, Departments, SLA Rules & Accounts
-python seed.py
+# Run migrations
+alembic upgrade head
 
 # Start FastAPI server
 uvicorn app.main:app --reload --port 8000
 ```
-Backend Swagger API Documentation: `http://localhost:8000/api/docs`
+Backend Swagger API Documentation: `http://localhost:8000/docs`
 
 ### 2. Frontend Setup
 ```bash
@@ -117,12 +66,12 @@ cd frontend
 npm install
 npm run dev
 ```
-Frontend Web Portal: `http://localhost:5173`
+Frontend Web Portal: `http://localhost:3000`
 
 ### 3. Run Backend Automated Test Suite
 ```bash
 cd backend
-PYTHONPATH=. .venv/bin/pytest tests/
+pytest tests/
 ```
 
 ### 4. Build Production Frontend
@@ -135,11 +84,14 @@ npm run build
 
 ## 📋 Comprehensive Documentation Links
 
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Database Schema Specification](docs/DATABASE_SCHEMA.md)
-- [API Reference Specs](docs/API_DOCUMENTATION.md)
-- [Setup & Deployment Guide](docs/SETUP_AND_DEPLOYMENT.md)
-- [Automated Testing Report](docs/TESTING_REPORT.md)
+- [Setup & Configuration](docs/SETUP.md)
+- [API Reference Specs](docs/API.md)
+- [Database Schema & Hardening](docs/DATABASE.md)
+- [Security & Least-Privilege Architecture](docs/SECURITY.md)
+- [Explainable AI & Fallbacks](docs/AI.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Interactive Demo Guide](docs/DEMO.md)
+- [Future Roadmap](docs/FUTURE_ROADMAP.md)
 
 ---
 

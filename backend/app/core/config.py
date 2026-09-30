@@ -1,6 +1,6 @@
 from typing import List, Optional
-from pydantic_settings import BaseSettings
-from pydantic import ConfigDict, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 # The hardcoded default value that must NEVER be used in production.
 # This constant is public so it can be referenced in the startup guard.
@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     # Database
     # Default to SQLite file for local dev, PostgreSQL for production
     DATABASE_URL: str = "sqlite+aiosqlite:///./grievance_system.db"
+    MIGRATION_DATABASE_URL: Optional[str] = None
 
     # JWT Security
     # CRITICAL: Override SECRET_KEY in production via environment variable.
@@ -80,7 +81,7 @@ class Settings(BaseSettings):
             )
         return v
 
-    model_config = ConfigDict(env_file=".env", case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 
 settings = Settings()

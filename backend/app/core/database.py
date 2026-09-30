@@ -5,24 +5,40 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import event
 from app.core.config import settings
 
-database_url = settings.DATABASE_URL
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
-# Handle render/railway postgres:// -> postgresql+asyncpg:// translation if needed
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+asyncpg://"):
-    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+def normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if "asyncpg" in url:
+        parsed = urlparse(url)
+        if parsed.query:
+            query_params = parse_qs(parsed.query, keep_blank_values=True)
+            query_params.pop("channel_binding", None)
+            if "sslmode" in query_params:
+                sslmode_val = query_params.pop("sslmode")[0]
+                query_params["ssl"] = [sslmode_val]
+            flattened = [(k, v[0] if len(v) == 1 else v) for k, v in query_params.items()]
+            new_query = urlencode(flattened, doseq=True)
+            url = urlunparse(parsed._replace(query=new_query))
+    return url
+
+database_url = normalize_database_url(settings.DATABASE_URL)
 
 # Configure Engine
 connect_args = {}
 if "sqlite" in database_url:
     connect_args["check_same_thread"] = False
+elif "asyncpg" in database_url:
+    connect_args["statement_cache_size"] = 0
 
 engine = create_async_engine(
     database_url,
     echo=False,
     future=True,
-    connect_args=connect_args if "sqlite" in database_url else {}
+    connect_args=connect_args
 )
 
 # Enable Foreign Keys in SQLite
