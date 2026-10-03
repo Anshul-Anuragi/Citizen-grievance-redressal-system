@@ -1,14 +1,68 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import api from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatApiError } from '@/utils/formatError';
 
 const STEPS = ['Personal Info', 'Account Setup', 'Declaration'];
+
+export const PASSWORD_RULES = [
+  {
+    id: 'length',
+    labelEn: 'At least 8 characters',
+    labelHi: 'कम से कम 8 वर्ण',
+    test: (p: string) => p.length >= 8,
+  },
+  {
+    id: 'upper',
+    labelEn: 'One uppercase letter (A-Z)',
+    labelHi: 'एक बड़ा अक्षर (A-Z)',
+    test: (p: string) => /[A-Z]/.test(p),
+  },
+  {
+    id: 'lower',
+    labelEn: 'One lowercase letter (a-z)',
+    labelHi: 'एक छोटा अक्षर (a-z)',
+    test: (p: string) => /[a-z]/.test(p),
+  },
+  {
+    id: 'number',
+    labelEn: 'One number (0-9)',
+    labelHi: 'एक अंक (0-9)',
+    test: (p: string) => /\d/.test(p),
+  },
+  {
+    id: 'special',
+    labelEn: 'One special character',
+    labelHi: 'एक विशेष वर्ण (उदा. !@#$%^&*)',
+    // Matches backend regex _PASSWORD_POLICY_PATTERN:
+    // [!@#$%^&*(),.?":{}|<>\-_=+\[\]\\;\'\/`~]
+    test: (p: string) => /[!@#$%^&*(),.?":{}|<>\-_=+[\]\\;'/`~]/.test(p),
+  },
+];
+
+export const normalizeMobile = (raw: string): string => {
+  let val = raw.trim();
+  if (val.startsWith('+91')) {
+    val = val.slice(3).trim();
+  }
+  if (val.startsWith('0') && val.length === 11) {
+    val = val.slice(1);
+  }
+  return val.replace(/\s+/g, '');
+};
+
+export const isMobileValid = (raw: string): boolean => {
+  const trimmed = raw.trim();
+  if (!trimmed) return true; // Optional field
+  const normalized = normalizeMobile(trimmed);
+  return /^[6-9]\d{9}$/.test(normalized);
+};
 
 export default function RegisterPage() {
   const { login } = useAuth();
@@ -30,11 +84,51 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [passwordAttempted, setPasswordAttempted] = useState(false);
+  const [mobileAttempted, setMobileAttempted] = useState(false);
+
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const mobileRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
+
+  const allPasswordRulesPassed = PASSWORD_RULES.every((r) => r.test(formData.password));
+
+  const getPasswordStrength = (p: string) => {
+    if (!p) return null;
+    const passedCount = PASSWORD_RULES.filter((r) => r.test(p)).length;
+
+    if (passedCount === 5) {
+      return {
+        label: 'Strong',
+        text:
+          language === 'hi'
+            ? 'मजबूत पासवर्ड — सभी आवश्यकताएं पूरी हुईं।'
+            : 'Strong password — all requirements satisfied.',
+        color: '#16a34a',
+        pct: 100,
+      };
+    }
+    if (passedCount >= 3) {
+      return {
+        label: 'Medium',
+        text: language === 'hi' ? 'मध्यम पासवर्ड' : 'Medium password',
+        color: '#f59e0b',
+        pct: 66,
+      };
+    }
+    return {
+      label: 'Weak',
+      text: language === 'hi' ? 'कमजोर पासवर्ड' : 'Weak password',
+      color: '#dc2626',
+      pct: 33,
+    };
+  };
+
+  const strength = getPasswordStrength(formData.password);
 
   const validateStep = (): boolean => {
     setErrorMsg(null);
@@ -47,10 +141,35 @@ export default function RegisterPage() {
         setErrorMsg(language === 'hi' ? 'ईमेल पता आवश्यक है।' : 'Email address is required.');
         return false;
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+        setErrorMsg(
+          language === 'hi'
+            ? 'कृपया एक मान्य ईमेल पता दर्ज करें।'
+            : 'Please enter a valid email address.'
+        );
+        return false;
+      }
+      if (formData.mobile.trim() && !isMobileValid(formData.mobile)) {
+        setMobileAttempted(true);
+        setErrorMsg(
+          language === 'hi'
+            ? 'मोबाइल नंबर में ठीक 10 अंक होने चाहिए और यह 6-9 से शुरू होना चाहिए।'
+            : 'Mobile number must contain exactly 10 digits and start with 6–9.'
+        );
+        mobileRef.current?.focus();
+        return false;
+      }
     }
+
     if (step === 1) {
-      if (formData.password.length < 8) {
-        setErrorMsg(language === 'hi' ? 'पासवर्ड कम से कम 8 वर्णों का होना चाहिए।' : 'Password must be at least 8 characters.');
+      if (!allPasswordRulesPassed) {
+        setPasswordAttempted(true);
+        setErrorMsg(
+          language === 'hi'
+            ? 'आपका पासवर्ड बहुत कमजोर है। कृपया आगे बढ़ने से पहले हाइलाइट की गई आवश्यकताओं को पूरा करें।'
+            : 'Your password is too weak. Please complete the highlighted requirements before registering.'
+        );
+        passwordRef.current?.focus();
         return false;
       }
       if (formData.password !== formData.confirmPassword) {
@@ -63,8 +182,47 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateStep()) return;
+    setErrorMsg(null);
 
+    // Validate step 0
+    if (!formData.fullName.trim() || !formData.email.trim()) {
+      setStep(0);
+      setErrorMsg(language === 'hi' ? 'कृपया सभी आवश्यक फ़ील्ड भरें।' : 'Please fill in all required fields.');
+      return;
+    }
+
+    if (formData.mobile.trim() && !isMobileValid(formData.mobile)) {
+      setStep(0);
+      setMobileAttempted(true);
+      setErrorMsg(
+        language === 'hi'
+          ? 'मोबाइल नंबर में ठीक 10 अंक होने चाहिए और यह 6-9 से शुरू होना चाहिए।'
+          : 'Mobile number must contain exactly 10 digits and start with 6–9.'
+      );
+      mobileRef.current?.focus();
+      return;
+    }
+
+    // Validate step 1
+    if (!allPasswordRulesPassed) {
+      setStep(1);
+      setPasswordAttempted(true);
+      setErrorMsg(
+        language === 'hi'
+          ? 'आपका पासवर्ड बहुत कमजोर है। कृपया आगे बढ़ने से पहले हाइलाइट की गई आवश्यकताओं को पूरा करें।'
+          : 'Your password is too weak. Please complete the highlighted requirements before registering.'
+      );
+      setTimeout(() => passwordRef.current?.focus(), 50);
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setStep(1);
+      setErrorMsg(language === 'hi' ? 'पासवर्ड मेल नहीं खाते।' : 'Passwords do not match.');
+      return;
+    }
+
+    // Validate step 2
     if (!formData.declaration) {
       setErrorMsg(language === 'hi' ? 'कृपया स्व-घोषणा स्वीकार करें।' : 'Please accept the declaration to proceed.');
       return;
@@ -72,11 +230,13 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      const cleanMobile = formData.mobile.trim() ? normalizeMobile(formData.mobile) : undefined;
+
       await api.post('/auth/register', {
         email: formData.email.trim(),
         password: formData.password,
         full_name: formData.fullName.trim(),
-        mobile: formData.mobile.trim() || undefined,
+        mobile: cleanMobile,
       });
 
       setSuccessMsg(
@@ -92,10 +252,11 @@ export default function RegisterPage() {
         setTimeout(() => router.push('/login'), 1500);
       }
     } catch (err: any) {
-      const msg =
-        err?.response?.data?.detail ||
-        (language === 'hi' ? 'पंजीकरण विफल। यह ईमेल पहले से पंजीकृत हो सकता है।' : 'Registration failed. This email may already be registered.');
-      setErrorMsg(msg);
+      const fallback =
+        language === 'hi'
+          ? 'पंजीकरण विफल। यह ईमेल पहले से पंजीकृत हो सकता है।'
+          : 'Registration failed. This email may already be registered.';
+      setErrorMsg(formatApiError(err, fallback));
       setLoading(false);
     }
   };
@@ -113,15 +274,6 @@ export default function RegisterPage() {
     color: '#374151', marginBottom: '5px',
     textTransform: 'uppercase', letterSpacing: '0.04em',
   };
-
-  const passwordStrength = (p: string) => {
-    if (!p) return null;
-    if (p.length < 6) return { label: 'Weak', color: '#dc2626', pct: 30 };
-    if (p.length < 10 || !/[A-Z]/.test(p)) return { label: 'Fair', color: '#f59e0b', pct: 60 };
-    return { label: 'Strong', color: '#16a34a', pct: 100 };
-  };
-
-  const strength = passwordStrength(formData.password);
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', background: '#f0f4f8' }}>
@@ -355,14 +507,57 @@ export default function RegisterPage() {
                           fontSize: '0.85rem', color: '#475569', fontWeight: 700,
                         }}>🇮🇳 +91</span>
                         <input
-                          name="mobile" type="tel" maxLength={10}
+                          ref={mobileRef}
+                          name="mobile" type="tel" maxLength={15}
                           value={formData.mobile} onChange={handleChange}
                           placeholder="9876543210"
-                          style={{ ...inputStyle, borderRadius: '0 8px 8px 0' }}
+                          style={{
+                            ...inputStyle,
+                            borderRadius: '0 8px 8px 0',
+                            borderColor:
+                              formData.mobile.trim() && !isMobileValid(formData.mobile)
+                                ? '#dc2626'
+                                : formData.mobile.trim() && isMobileValid(formData.mobile)
+                                ? '#16a34a'
+                                : '#e2e8f0',
+                          }}
                           onFocus={(e) => (e.target.style.borderColor = '#0e3b64')}
-                          onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
+                          onBlur={(e) =>
+                            (e.target.style.borderColor =
+                              formData.mobile.trim() && !isMobileValid(formData.mobile)
+                                ? '#dc2626'
+                                : formData.mobile.trim() && isMobileValid(formData.mobile)
+                                ? '#16a34a'
+                                : '#e2e8f0')
+                          }
                         />
                       </div>
+
+                      {/* Live mobile validation feedback */}
+                      {formData.mobile.trim() !== '' && (
+                        <div
+                          style={{
+                            marginTop: '5px',
+                            fontSize: '0.73rem',
+                            fontWeight: 600,
+                            color: isMobileValid(formData.mobile) ? '#16a34a' : '#dc2626',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <span style={{ fontWeight: 800 }}>{isMobileValid(formData.mobile) ? '✓' : '✗'}</span>
+                          <span>
+                            {isMobileValid(formData.mobile)
+                              ? language === 'hi'
+                                ? 'वैध 10-अंकीय मोबाइल नंबर'
+                                : 'Valid 10-digit mobile number'
+                              : language === 'hi'
+                              ? 'मोबाइल नंबर में ठीक 10 अंक होने चाहिए और यह 6-9 से शुरू होना चाहिए।'
+                              : 'Mobile number must contain exactly 10 digits and start with 6–9.'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -376,7 +571,7 @@ export default function RegisterPage() {
                         boxShadow: '0 4px 14px rgba(14,59,100,0.35)',
                       }}
                     >
-                      Continue →
+                      {language === 'hi' ? 'जारी रखें →' : 'Continue →'}
                     </button>
                   </div>
                 )}
@@ -386,17 +581,34 @@ export default function RegisterPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     <div>
                       <label style={labelStyle}>
-                        {language === 'hi' ? 'पासवर्ड (कम से कम 8 अक्षर)' : 'Password (Min. 8 characters)'}{' '}
+                        {language === 'hi' ? 'पासवर्ड' : 'Password'}{' '}
                         <span style={{ color: '#dc2626' }}>*</span>
                       </label>
                       <div style={{ position: 'relative' }}>
                         <input
+                          ref={passwordRef}
                           name="password" type={showPass ? 'text' : 'password'} required
                           value={formData.password} onChange={handleChange}
                           placeholder="••••••••••••"
-                          style={{ ...inputStyle, paddingRight: '3rem' }}
+                          style={{
+                            ...inputStyle,
+                            paddingRight: '3rem',
+                            borderColor:
+                              passwordAttempted && !allPasswordRulesPassed
+                                ? '#dc2626'
+                                : allPasswordRulesPassed
+                                ? '#16a34a'
+                                : '#e2e8f0',
+                          }}
                           onFocus={(e) => (e.target.style.borderColor = '#0e3b64')}
-                          onBlur={(e) => (e.target.style.borderColor = '#e2e8f0')}
+                          onBlur={(e) =>
+                            (e.target.style.borderColor =
+                              passwordAttempted && !allPasswordRulesPassed
+                                ? '#dc2626'
+                                : allPasswordRulesPassed
+                                ? '#16a34a'
+                                : '#e2e8f0')
+                          }
                         />
                         <button type="button" onClick={() => setShowPass(!showPass)} style={{
                           position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
@@ -406,9 +618,10 @@ export default function RegisterPage() {
                           {showPass ? '🙈 Hide' : '👁 Show'}
                         </button>
                       </div>
+
                       {/* Password strength */}
                       {strength && (
-                        <div style={{ marginTop: '6px' }}>
+                        <div style={{ marginTop: '8px' }}>
                           <div style={{ height: '4px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{
                               height: '100%', width: `${strength.pct}%`,
@@ -416,12 +629,70 @@ export default function RegisterPage() {
                               transition: 'width 0.3s, background 0.3s',
                             }} />
                           </div>
-                          <span style={{ fontSize: '0.7rem', color: strength.color, fontWeight: 700 }}>
-                            {strength.label} password
-                          </span>
+                          <div style={{ marginTop: '4px', fontSize: '0.72rem', color: strength.color, fontWeight: 700 }}>
+                            {strength.text}
+                          </div>
                         </div>
                       )}
+
+                      {/* Password Requirements Checklist */}
+                      <div style={{
+                        marginTop: '10px',
+                        padding: '0.65rem 0.85rem',
+                        background: passwordAttempted && !allPasswordRulesPassed ? '#fef2f2' : '#f8fafc',
+                        border: `1.5px solid ${passwordAttempted && !allPasswordRulesPassed ? '#fca5a5' : '#e2e8f0'}`,
+                        borderRadius: '8px',
+                        transition: 'all 0.2s',
+                      }}>
+                        <div style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          color: passwordAttempted && !allPasswordRulesPassed ? '#991b1b' : '#374151',
+                          marginBottom: '6px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}>
+                          {language === 'hi' ? 'पासवर्ड की आवश्यकताएं' : 'Password requirements'}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {PASSWORD_RULES.map((rule) => {
+                            const satisfied = rule.test(formData.password);
+                            const isMissingAfterAttempt = passwordAttempted && !satisfied;
+                            return (
+                              <div
+                                key={rule.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  fontSize: '0.73rem',
+                                  fontWeight: satisfied ? 600 : isMissingAfterAttempt ? 700 : 500,
+                                  color: satisfied
+                                    ? '#16a34a'
+                                    : isMissingAfterAttempt
+                                    ? '#dc2626'
+                                    : '#64748b',
+                                  transition: 'color 0.2s',
+                                }}
+                              >
+                                <span style={{
+                                  fontSize: '0.8rem',
+                                  fontWeight: 800,
+                                  width: '14px',
+                                  display: 'inline-block',
+                                }}>
+                                  {satisfied ? '✓' : '✗'}
+                                </span>
+                                <span>
+                                  {language === 'hi' ? rule.labelHi : rule.labelEn}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                     </div>
+
                     <div>
                       <label style={labelStyle}>
                         {language === 'hi' ? 'पासवर्ड की पुष्टि करें' : 'Confirm Password'}{' '}
@@ -448,7 +719,9 @@ export default function RegisterPage() {
                         </button>
                       </div>
                       {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                        <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 700 }}>✓ Passwords match</span>
+                        <div style={{ marginTop: '5px', fontSize: '0.72rem', color: '#16a34a', fontWeight: 700 }}>
+                          ✓ {language === 'hi' ? 'पासवर्ड मेल खाते हैं' : 'Passwords match'}
+                        </div>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
@@ -458,7 +731,7 @@ export default function RegisterPage() {
                         border: '1.5px solid #e2e8f0', borderRadius: '9px',
                         fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
                       }}>
-                        ← Back
+                        {language === 'hi' ? '← वापस' : '← Back'}
                       </button>
                       <button type="button" onClick={() => { if (validateStep()) setStep(2); }} style={{
                         flex: 2, padding: '0.75rem',
@@ -466,8 +739,9 @@ export default function RegisterPage() {
                         border: 'none', borderRadius: '9px',
                         fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
                         boxShadow: '0 4px 14px rgba(14,59,100,0.35)',
-                      }}>
-                        Continue →
+                      }}
+                      >
+                        {language === 'hi' ? 'जारी रखें →' : 'Continue →'}
                       </button>
                     </div>
                   </div>
@@ -482,12 +756,19 @@ export default function RegisterPage() {
                       borderRadius: '10px', padding: '1rem',
                     }}>
                       <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e40af', marginBottom: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        📋 Registration Summary
+                        📋 {language === 'hi' ? 'पंजीकरण सारांश' : 'Registration Summary'}
                       </div>
                       {[
-                        { label: 'Name', value: formData.fullName },
-                        { label: 'Email', value: formData.email },
-                        { label: 'Mobile', value: formData.mobile ? `+91 ${formData.mobile}` : 'Not provided' },
+                        { label: language === 'hi' ? 'नाम' : 'Name', value: formData.fullName },
+                        { label: language === 'hi' ? 'ईमेल' : 'Email', value: formData.email },
+                        {
+                          label: language === 'hi' ? 'मोबाइल' : 'Mobile',
+                          value: formData.mobile.trim()
+                            ? `+91 ${normalizeMobile(formData.mobile)}`
+                            : language === 'hi'
+                            ? 'प्रदान नहीं किया गया'
+                            : 'Not provided',
+                        },
                       ].map(({ label, value }) => (
                         <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '4px 0', borderBottom: '1px solid #e0eaff' }}>
                           <span style={{ color: '#64748b', fontWeight: 600 }}>{label}</span>
@@ -522,7 +803,7 @@ export default function RegisterPage() {
                         border: '1.5px solid #e2e8f0', borderRadius: '9px',
                         fontSize: '0.88rem', fontWeight: 700, cursor: 'pointer',
                       }}>
-                        ← Back
+                        {language === 'hi' ? '← वापस' : '← Back'}
                       </button>
                       <button type="submit" disabled={loading || !formData.declaration} style={{
                         flex: 2, padding: '0.75rem',

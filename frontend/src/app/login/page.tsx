@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { formatApiError } from '@/utils/formatError';
 
 const ROLE_CONFIG = {
   CITIZEN: {
@@ -55,12 +56,11 @@ export default function LoginPage() {
       else if (user.role === 'DISTRICT_ADMIN' || user.role === 'SUPER_ADMIN') router.push('/admin');
       else router.push('/dashboard');
     } catch (err: any) {
-      setErrorMsg(
-        err?.response?.data?.detail ||
-          (language === 'hi'
-            ? 'ईमेल या पासवर्ड अमान्य है।'
-            : 'Invalid email or password. Please verify credentials.')
-      );
+      const fallback =
+        language === 'hi'
+          ? 'ईमेल या पासवर्ड अमान्य है।'
+          : 'Invalid email or password. Please verify credentials.';
+      setErrorMsg(formatApiError(err, fallback));
     } finally {
       setLoading(false);
     }
